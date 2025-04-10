@@ -56,12 +56,13 @@ app.post('/webhook', async (req, res) => {
       await sendWhatsAppMessage(from, reply);
 
       // Salva conversazione
-      const newMessage = new Message({
-        from,
-        message: userMsg,
-        response: reply
-      });
-      await newMessage.save();
+      // const newMessage = new Message({
+//   from,
+//   message: userMsg,
+//   response: reply
+// });
+// await newMessage.save();
+
     } catch (err) {
       console.error('Errore:', err);
     }
