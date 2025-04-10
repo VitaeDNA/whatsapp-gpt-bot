@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const askChatGPT = require('./utils/chatgpt');
 const transcribeAudio = require('./utils/whisper');
-const Message = require('./utils/database');
+// const Message = require('./utils/database');
 
 const app = express();
 const port = process.env.PORT || 3000;
