@@ -117,3 +117,4 @@ async function sendWhatsAppMessage(to, text) {
 app.listen(port, () => {
   console.log(`🚀 Server online sulla porta ${port}`);
 });
+console.log("✅ TOKEN LETTO:", process.env.META_ACCESS_TOKEN);
