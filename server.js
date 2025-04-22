@@ -112,3 +112,4 @@ async function sendWhatsAppMessage(to, text) {
 }
 
 app.listen(port, () => {
+});
