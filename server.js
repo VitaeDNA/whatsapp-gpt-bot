@@ -7,42 +7,13 @@ require('dotenv').config();
 
 const askChatGPT = require('./utils/chatgpt');
 const transcribeAudio = require('./utils/whisper');
-// const Message = require('./utils/database');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-// 🌐 Verifica Webhook Meta
-app.get('/webhook', (req, res) => {
-  const askChatGPT = require('./chatgpt');
-const sendMessage = require('./sendMessage'); // lo creiamo dopo
-
-app.post('/webhook', async (req, res) => {
-  console.log('📩 WhatsApp webhook ricevuto:', JSON.stringify(req.body, null, 2));
-
-  try {
-    const entry = req.body.entry?.[0];
-    const change = entry?.changes?.[0];
-    const message = change?.value?.messages?.[0];
-
-    if (message && message.type === 'text') {
-      const userMessage = message.text.body;
-      const phoneNumber = message.from;
-
-      const reply = await askChatGPT(userMessage); // Assistant GPT
-      await sendMessage(phoneNumber, reply); // rispondi su WhatsApp
-    }
-
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('❌ Errore webhook:', err);
-    res.sendStatus(500);
-  }
-});
-
-// 📥 Gestione messaggi
+// 🌐 Verifica iniziale Webhook Meta
 app.get('/webhook', (req, res) => {
   const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
   const mode = req.query['hub.mode'];
@@ -56,48 +27,46 @@ app.get('/webhook', (req, res) => {
     res.sendStatus(403);
   }
 });
+
+// 📥 Ricezione messaggi WhatsApp
 app.post('/webhook', async (req, res) => {
-  const entry = req.body.entry?.[0];
-  const changes = entry?.changes?.[0];
-  const message = changes?.value?.messages?.[0];
+  console.log('📩 Webhook ricevuto:', JSON.stringify(req.body, null, 2));
 
-  if (message) {
-    const from = message.from;
-    let userMsg = '';
-    let mediaId = '';
+  try {
+    const entry = req.body.entry?.[0];
+    const changes = entry?.changes?.[0];
+    const message = changes?.value?.messages?.[0];
 
-    if (message.type === 'text') {
-      userMsg = message.text.body;
-    } else if (message.type === 'audio') {
-      mediaId = message.audio.id;
-      const audioPath = await downloadMedia(mediaId, 'audio');
-      userMsg = await transcribeAudio(audioPath);
-    } else if (message.type === 'image') {
-      mediaId = message.image.id;
-      await downloadMedia(mediaId, 'image');
-      userMsg = 'Immagine ricevuta.';
-    }
+    if (message) {
+      const from = message.from;
+      let userMsg = '';
+      let mediaId = '';
 
-    try {
+      if (message.type === 'text') {
+        userMsg = message.text.body;
+      } else if (message.type === 'audio') {
+        mediaId = message.audio.id;
+        const audioPath = await downloadMedia(mediaId, 'audio');
+        userMsg = await transcribeAudio(audioPath);
+      } else if (message.type === 'image') {
+        mediaId = message.image.id;
+        await downloadMedia(mediaId, 'image');
+        userMsg = 'Immagine ricevuta.';
+      }
+
+      // GPT response
       const reply = await askChatGPT(userMsg);
       await sendWhatsAppMessage(from, reply);
-
-      // Salva conversazione
-      // const newMessage = new Message({
-//   from,
-//   message: userMsg,
-//   response: reply
-// });
-// await newMessage.save();
-
-    } catch (err) {
-      console.error('Errore:', err);
     }
-  }
 
-  res.sendStatus(200);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Errore webhook:', err);
+    res.sendStatus(500);
+  }
 });
 
+// 🔽 Funzione download media
 async function downloadMedia(mediaId, mediaType) {
   const url = `https://graph.facebook.com/v18.0/${mediaId}`;
   const headers = {
@@ -124,6 +93,7 @@ async function downloadMedia(mediaId, mediaType) {
   });
 }
 
+// 📤 Invio risposta su WhatsApp
 async function sendWhatsAppMessage(to, text) {
   await axios.post(
     `https://graph.facebook.com/v18.0/${process.env.PHONE_NUMBER_ID}/messages`,
@@ -142,6 +112,3 @@ async function sendWhatsAppMessage(to, text) {
 }
 
 app.listen(port, () => {
-  console.log(`🚀 Server online sulla porta ${port}`);
-});
-console.log("✅ TOKEN LETTO:", process.env.META_ACCESS_TOKEN);
