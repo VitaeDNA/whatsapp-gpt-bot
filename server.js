@@ -16,15 +16,29 @@ app.use(bodyParser.json());
 
 // 🌐 Verifica Webhook Meta
 app.get('/webhook', (req, res) => {
-  const verify_token = process.env.VERIFY_TOKEN;
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+  const askChatGPT = require('./chatgpt');
+const sendMessage = require('./sendMessage'); // lo creiamo dopo
 
-  if (mode && token && mode === 'subscribe' && token === verify_token) {
-    res.status(200).send(challenge);
-  } else {
-    res.sendStatus(403);
+app.post('/webhook', async (req, res) => {
+  console.log('📩 WhatsApp webhook ricevuto:', JSON.stringify(req.body, null, 2));
+
+  try {
+    const entry = req.body.entry?.[0];
+    const change = entry?.changes?.[0];
+    const message = change?.value?.messages?.[0];
+
+    if (message && message.type === 'text') {
+      const userMessage = message.text.body;
+      const phoneNumber = message.from;
+
+      const reply = await askChatGPT(userMessage); // Assistant GPT
+      await sendMessage(phoneNumber, reply); // rispondi su WhatsApp
+    }
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Errore webhook:', err);
+    res.sendStatus(500);
   }
 });
 
